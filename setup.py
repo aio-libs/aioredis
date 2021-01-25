@@ -48,7 +48,11 @@ setup(
     url="https://github.com/aio-libs/aioredis",
     license="MIT",
     packages=find_packages(exclude=["tests"]),
-    install_requires=["async-timeout", 'hiredis; implementation_name=="cpython"'],
+    install_requires=[
+        "async-timeout",
+        'hiredis>=1.0; implementation_name=="cpython"',
+        "typing-extensions",
+    ],
     python_requires=">=3.6",
     include_package_data=True,
 )

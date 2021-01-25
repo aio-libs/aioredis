@@ -1,68 +1,67 @@
 import asyncio
 
+import async_timeout
+
 import aioredis
 
 STOPWORD = "STOP"
 
 
 async def pubsub():
-    pool = await aioredis.create_pool("redis://localhost", minsize=5, maxsize=10)
+    redis = aioredis.Redis.from_url(
+        "redis://localhost", max_connections=10, decode_responses=True
+    )
+    psub = redis.pubsub()
 
-    async def reader(channel):
-        while await channel.wait_message():
-            msg = await channel.get(encoding="utf-8")
-            # ... process message ...
-            print(f"message in {channel.name}: {msg}")
+    async def reader(channel: aioredis.client.PubSub):
+        while True:
+            try:
+                async with async_timeout.timeout(1):
+                    message = await channel.get_message(ignore_subscribe_messages=True)
+                    if message is not None:
+                        print(f"(Reader) Message Received: {message}")
+                        if message["data"] == STOPWORD:
+                            print("(Reader) STOP")
+                            break
+                    await asyncio.sleep(0.01)
+            except asyncio.TimeoutError:
+                pass
 
-            if msg == STOPWORD:
-                return
+    async with psub as p:
+        await p.subscribe("channel:1")
+        await reader(p)  # wait for reader to complete
+        await p.unsubscribe("channel:1")
 
-    with await pool as conn:
-        await conn.execute_pubsub("subscribe", "channel:1")
-        channel = conn.pubsub_channels["channel:1"]
-        await reader(channel)  # wait for reader to complete
-        await conn.execute_pubsub("unsubscribe", "channel:1")
-
-    # Explicit connection usage
-    conn = await pool.acquire()
-    try:
-        await conn.execute_pubsub("subscribe", "channel:1")
-        channel = conn.pubsub_channels["channel:1"]
-        await reader(channel)  # wait for reader to complete
-        await conn.execute_pubsub("unsubscribe", "channel:1")
-    finally:
-        pool.release(conn)
-
-    pool.close()
-    await pool.wait_closed()  # closing all open connections
+    # closing all open connections
+    await psub.close()
+    await redis.close()
 
 
-def main():
-    loop = asyncio.get_event_loop()
-    tsk = asyncio.ensure_future(pubsub(), loop=loop)
+async def main():
+    tsk = asyncio.create_task(pubsub())
 
     async def publish():
-        pub = await aioredis.create_redis("redis://localhost")
+        pub = aioredis.Redis.from_url("redis://localhost", decode_responses=True)
         while not tsk.done():
             # wait for clients to subscribe
             while True:
-                subs = await pub.pubsub_numsub("channel:1")
-                if subs[b"channel:1"] == 1:
+                subs = dict(await pub.pubsub_numsub("channel:1"))
+                if subs["channel:1"] == 1:
                     break
-                await asyncio.sleep(0, loop=loop)
+                await asyncio.sleep(0)
             # publish some messages
             for msg in ["one", "two", "three"]:
+                print(f"(Publisher) Publishing Message: {msg}")
                 await pub.publish("channel:1", msg)
             # send stop word
             await pub.publish("channel:1", STOPWORD)
-        pub.close()
-        await pub.wait_closed()
+        await pub.close()
 
-    loop.run_until_complete(asyncio.gather(publish(), tsk, loop=loop))
+    await publish()
 
 
 if __name__ == "__main__":
     import os
 
     if "redis_version:2.6" not in os.environ.get("REDIS_VERSION", ""):
-        main()
+        asyncio.run(main())

@@ -5,26 +5,24 @@ import aioredis
 
 async def main():
     # Redis client bound to single connection (no auto reconnection).
-    redis = await aioredis.create_redis("redis://localhost")
+    redis = aioredis.Redis(host="localhost", single_connection_client=True)
     await redis.set("my-key", "value")
     val = await redis.get("my-key")
     print(val)
 
     # gracefully closing underlying connection
-    redis.close()
-    await redis.wait_closed()
+    await redis.close()
 
 
 async def redis_pool():
     # Redis client bound to pool of connections (auto-reconnecting).
-    redis = await aioredis.create_redis_pool("redis://localhost")
+    redis = aioredis.Redis.from_url("redis://localhost")
     await redis.set("my-key", "value")
     val = await redis.get("my-key")
     print(val)
 
     # gracefully closing underlying connection
-    redis.close()
-    await redis.wait_closed()
+    await redis.close()
 
 
 if __name__ == "__main__":

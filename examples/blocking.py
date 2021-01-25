@@ -5,7 +5,7 @@ import aioredis
 
 async def blocking_commands():
     # Redis client bound to pool of connections (auto-reconnecting).
-    redis = await aioredis.create_redis_pool("redis://localhost")
+    redis = aioredis.Redis.from_url("redis://localhost")
 
     async def get_message():
         # Redis blocking commands block the connection they are on
@@ -26,8 +26,7 @@ async def blocking_commands():
     print(future.result())
 
     # gracefully closing underlying connection
-    redis.close()
-    await redis.wait_closed()
+    await redis.close()
 
 
 if __name__ == "__main__":

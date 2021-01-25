@@ -4,12 +4,9 @@ import aioredis
 
 
 async def main():
-    redis = await aioredis.create_redis_pool("redis://localhost")
-
-    tr = redis.multi_exec()
-    tr.set("key1", "value1")
-    tr.set("key2", "value2")
-    ok1, ok2 = await tr.execute()
+    redis = await aioredis.Redis.from_url("redis://localhost")
+    async with redis.pipeline(transaction=True) as pipe:
+        ok1, ok2 = await (pipe.set("key1", "value1").set("key2", "value2").execute())
     assert ok1
     assert ok2
 

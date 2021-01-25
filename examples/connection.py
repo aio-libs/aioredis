@@ -4,22 +4,20 @@ import aioredis
 
 
 async def main():
-    conn = await aioredis.create_connection("redis://localhost", encoding="utf-8")
+    conn = aioredis.Redis.from_url(
+        "redis://localhost", encoding="utf-8", decode_responses=True
+    )
 
-    ok = await conn.execute("set", "my-key", "some value")
-    assert ok == "OK", ok
+    ok = await conn.execute_command("set", "my-key", "some value")
+    assert ok is True
 
-    str_value = await conn.execute("get", "my-key")
-    raw_value = await conn.execute("get", "my-key", encoding=None)
+    str_value = await conn.execute_command("get", "my-key")
     assert str_value == "some value"
-    assert raw_value == b"some value"
 
     print("str value:", str_value)
-    print("raw value:", raw_value)
 
     # optionally close connection
-    conn.close()
-    await conn.wait_closed()
+    await conn.close()
 
 
 if __name__ == "__main__":

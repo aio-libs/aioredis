@@ -1,10 +1,10 @@
 import asyncio
 
-import aioredis
+import aioredis.sentinel
 
 
 async def main():
-    sentinel = await aioredis.create_sentinel(
+    sentinel = aioredis.sentinel.Sentinel(
         ["redis://localhost:26379", "redis://sentinel2:26379"]
     )
     redis = sentinel.master_for("mymaster")

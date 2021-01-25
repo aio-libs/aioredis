@@ -4,13 +4,12 @@ import aioredis
 
 
 async def main():
-    pool = await aioredis.create_pool("redis://localhost", minsize=5, maxsize=10)
-    with await pool as conn:  # low-level redis connection
-        await conn.execute("set", "my-key", "value")
-        val = await conn.execute("get", "my-key")
+    redis = aioredis.Redis.from_url("redis://localhost", max_connections=10)
+    async with redis as r:
+        await r.execute_command("set", "my-key", "value")
+        val = await r.execute_command("get", "my-key")
     print("raw value:", val)
-    pool.close()
-    await pool.wait_closed()  # closing all open connections
+    await redis.close()
 
 
 if __name__ == "__main__":

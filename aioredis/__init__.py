@@ -1,61 +1,59 @@
-from .commands import GeoMember, GeoPoint, Redis, create_redis, create_redis_pool
-from .connection import RedisConnection, create_connection
-from .errors import (
-    AuthError,
-    ChannelClosedError,
-    ConnectionClosedError,
-    ConnectionForcedCloseError,
-    MasterNotFoundError,
-    MasterReplyError,
-    MaxClientsError,
-    MultiExecError,
-    PipelineError,
-    PoolClosedError,
-    ProtocolError,
+from aioredis.client import Redis, StrictRedis
+from aioredis.connection import (
+    BlockingConnectionPool,
+    Connection,
+    ConnectionPool,
+    SSLConnection,
+    UnixDomainSocketConnection,
+)
+from aioredis.exceptions import (
+    AuthenticationError,
+    AuthenticationWrongNumberOfArgsError,
+    BusyLoadingError,
+    ChildDeadlockedError,
+    ConnectionError,
+    DataError,
+    InvalidResponse,
+    PubSubError,
     ReadOnlyError,
     RedisError,
-    ReplyError,
-    SlaveNotFoundError,
-    SlaveReplyError,
-    WatchVariableError,
+    ResponseError,
+    TimeoutError,
+    WatchError,
 )
-from .pool import ConnectionsPool, create_pool
-from .pubsub import Channel
-from .sentinel import RedisSentinel, create_sentinel
+from aioredis.utils import from_url
 
-__version__ = "1.3.1"
+
+def int_or_str(value):
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
+__version__ = "3.5.3"
+VERSION = tuple(map(int_or_str, __version__.split(".")))
 
 __all__ = [
-    # Factories
-    "create_connection",
-    "create_pool",
-    "create_redis",
-    "create_redis_pool",
-    "create_sentinel",
-    # Classes
-    "RedisConnection",
-    "ConnectionsPool",
-    "Redis",
-    "GeoPoint",
-    "GeoMember",
-    "Channel",
-    "RedisSentinel",
-    # Errors
-    "RedisError",
-    "ReplyError",
-    "MaxClientsError",
-    "AuthError",
-    "ProtocolError",
-    "PipelineError",
-    "MultiExecError",
-    "WatchVariableError",
-    "ConnectionClosedError",
-    "ConnectionForcedCloseError",
-    "PoolClosedError",
-    "ChannelClosedError",
-    "MasterNotFoundError",
-    "SlaveNotFoundError",
+    "AuthenticationError",
+    "AuthenticationWrongNumberOfArgsError",
+    "BlockingConnectionPool",
+    "BusyLoadingError",
+    "ChildDeadlockedError",
+    "Connection",
+    "ConnectionError",
+    "ConnectionPool",
+    "DataError",
+    "from_url",
+    "InvalidResponse",
+    "PubSubError",
     "ReadOnlyError",
-    "MasterReplyError",
-    "SlaveReplyError",
+    "Redis",
+    "RedisError",
+    "ResponseError",
+    "SSLConnection",
+    "StrictRedis",
+    "TimeoutError",
+    "UnixDomainSocketConnection",
+    "WatchError",
 ]

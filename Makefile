@@ -1,8 +1,8 @@
-PYTHON ?= python3
+  PYTHON ?= python3
 PYTEST ?= pytest
 MYPY ?= mypy
 
-REDIS_TAGS ?= 2.6.17 2.8.22 3.0.7 3.2.13 4.0.14 5.0.9
+REDIS_TAGS ?= 2.6.17 2.8.22 3.0.7 3.2.13 4.0.14 5.0.9 6.0.10
 
 ARCHIVE_URL = https://github.com/antirez/redis/archive
 INSTALL_DIR ?= build
@@ -31,7 +31,7 @@ mypy:
 	$(MYPY) aioredis --ignore-missing-imports
 
 test:
-	$(PYTEST)
+	$(PYTEST) --timeout=60
 
 cov coverage:
 	$(PYTEST) --cov
@@ -63,11 +63,7 @@ aioredis.egg-info:
 	pip install -Ue .
 
 
-ifdef TRAVIS
-examples: .start-redis $(EXAMPLES)
-else
 examples: $(EXAMPLES)
-endif
 
 $(EXAMPLES):
 	@export REDIS_VERSION="$(redis-cli INFO SERVER | sed -n 2p)"
@@ -88,11 +84,11 @@ certificate:
 
 ci-test: $(REDIS_TARGETS)
 	$(PYTEST) \
-		--cov --cov-report=xml -vvvs\
-		$(foreach T,$(REDIS_TARGETS),--redis-server=$T)
+		--timeout=60 --cov --cov-report=xml -vvvs\
+		$(foreach $(REDIS_TARGETS))
 
 ci-test-%: $(INSTALL_DIR)/%/redis-server
-	$(PYTEST) --cov --redis-server=$<
+	$(PYTEST) --cov
 
 ci-build-redis: $(REDIS_TARGETS)
 

@@ -1,18 +1,16 @@
 import asyncio
 
-import aioredis
+import aioredis.sentinel
 
 
 async def main():
-    sentinel_client = await aioredis.create_sentinel([("localhost", 26379)])
+    sentinel_client = aioredis.sentinel.Sentinel([("localhost", 26379)])
 
-    master_redis = sentinel_client.master_for("mymaster")
-    info = await master_redis.role()
+    master_redis: aioredis.Redis = sentinel_client.master_for("mymaster")
+    info = await master_redis.sentinel_master("mymaster")
     print("Master role:", info)
-    assert info.role == "master"
 
-    sentinel_client.close()
-    await sentinel_client.wait_closed()
+    await sentinel_client.close()
 
 
 if __name__ == "__main__":
