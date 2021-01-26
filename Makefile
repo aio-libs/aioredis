@@ -85,7 +85,7 @@ certificate:
 ci-test: $(REDIS_TARGETS)
 	$(PYTEST) \
 		--cov --cov-report=xml -vvvs\
-		$(foreach $(REDIS_TARGETS),--redis-server=$T)
+		$(foreach T,$(REDIS_TARGETS),--redis-server=$T)
 
 ci-test-%: $(INSTALL_DIR)/%/redis-server
 	$(PYTEST) --cov
