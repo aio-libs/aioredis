@@ -875,8 +875,8 @@ class Redis:
     def __repr__(self):
         return f"{self.__class__.__name__}<{self.connection_pool!r}>"
 
-    def __await__(self) -> Awaitable[Redis]:
-        return self.initialize()
+    def __await__(self):
+        return self.initialize().__await__()
 
     async def initialize(self):
         if self.single_connection_client and self.connection is None:
@@ -1007,8 +1007,7 @@ class Redis:
             connection_pool=self.connection_pool, single_connection_client=True
         )
 
-    async def __aenter__(self) -> Redis:
-        return self
+    __aenter__ = initialize
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.close()
@@ -3841,7 +3840,10 @@ class PubSub:
         # to lookup channel and pattern names for callback handlers.
         self.encoder = self.connection_pool.get_encoder()
         if self.encoder.decode_responses:
-            self.health_check_response = ["pong", self.HEALTH_CHECK_MESSAGE]
+            self.health_check_response: Iterable[Union[str, bytes]] = [
+                "pong",
+                self.HEALTH_CHECK_MESSAGE,
+            ]
         else:
             self.health_check_response = [
                 b"pong",
@@ -3860,14 +3862,8 @@ class PubSub:
         await self.reset()
 
     def __del__(self):
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(self.close())
-            else:
-                loop.run_until_complete(self.close())
-        except Exception:
-            pass
+        if self.connection:
+            self.connection.clear_connect_callbacks()
 
     async def reset(self):
         async with self._lock:
@@ -4297,7 +4293,7 @@ class Pipeline(Redis):
                 await self.connection.read_response()
             except ConnectionError:
                 # disconnect will also remove any previous WATCHes
-                self.connection.disconnect()
+                await self.connection.disconnect()
         # clean up the other instance attributes
         self.watching = False
         self.explicit_transaction = False

@@ -757,17 +757,23 @@ class Connection:
 
     async def disconnect(self):
         """Disconnects from the Redis server"""
-        self._parser.on_disconnect()
-        if not self.is_connected:
-            return
         try:
-            if os.getpid() == self.pid:
-                self._writer.close()
-                await self._writer.wait_closed()
-        except OSError:
-            pass
-        self._reader = None
-        self._writer = None
+            async with async_timeout.timeout(self.socket_connect_timeout):
+                self._parser.on_disconnect()
+                if not self.is_connected:
+                    return
+                try:
+                    if os.getpid() == self.pid:
+                        self._writer.close()
+                        await self._writer.wait_closed()
+                except OSError:
+                    pass
+                self._reader = None
+                self._writer = None
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"Timed out closing connection after {self.socket_connect_timeout}"
+            ) from None
 
     async def check_health(self):
         """Check the health of the connection with a PING/PONG"""
@@ -841,7 +847,7 @@ class Connection:
         try:
             with async_timeout.timeout(self.socket_timeout):
                 response = await self._parser.read_response()
-        except (asyncio.TimeoutError, asyncio.CancelledError):
+        except asyncio.TimeoutError:
             await self.disconnect()
             raise TimeoutError(f"Timeout reading from {self.host}:{self.port}")
         except BaseException:
