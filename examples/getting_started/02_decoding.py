@@ -4,7 +4,7 @@ import aioredis
 
 
 async def main():
-    redis = await aioredis.Redis.from_url("redis://localhost")
+    redis = aioredis.from_url("redis://localhost")
 
     await redis.hmset_dict("hash", key1="value1", key2="value2", key3=123)
 

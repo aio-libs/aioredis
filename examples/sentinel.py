@@ -10,8 +10,6 @@ async def main():
     info = await master_redis.sentinel_master("mymaster")
     print("Master role:", info)
 
-    await sentinel_client.close()
-
 
 if __name__ == "__main__":
     asyncio.run(main())

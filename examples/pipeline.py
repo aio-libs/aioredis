@@ -4,7 +4,7 @@ import aioredis
 
 
 async def main():
-    redis = aioredis.Redis.from_url("redis://localhost")
+    redis = aioredis.from_url("redis://localhost")
 
     # No pipelining;
     async def wait_each_command():
@@ -33,6 +33,18 @@ async def main():
             result = await pipe.execute()
         return result
 
+    async def pipeline_transaction():
+        async with redis.pipeline(transaction=True) as pipe:
+            pipe.get("foo").incr("bar")
+            result = await pipe.execute()
+        return result
+
+    def callback(pipe: aioredis.client.Pipeline):
+        pipe.get("foo").incr("bar")
+
+    async def transaction():
+        return await redis.transaction(callback)
+
     res = await wait_each_command()
     print(res)
     res = await concurrent()
@@ -41,8 +53,10 @@ async def main():
     print(res)
     res = await context_pipeline()
     print(res)
-
-    await redis.close()
+    res = await pipeline_transaction()
+    print(res)
+    res = await transaction()
+    print(res)
 
 
 if __name__ == "__main__":

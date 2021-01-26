@@ -23,7 +23,7 @@ async def reader(channel: aioredis.client.PubSub):
 
 
 async def main():
-    redis = aioredis.Redis.from_url("redis://localhost")
+    redis = aioredis.from_url("redis://localhost")
     pubsub = redis.pubsub()
     await pubsub.subscribe("channel:1", "channel:2")
 
@@ -32,7 +32,6 @@ async def main():
     await redis.publish("channel:1", "Hello")
     await redis.publish("channel:2", "World")
     await redis.publish("channel:1", STOPWORD)
-    await redis.close()
 
 
 asyncio.run(main())

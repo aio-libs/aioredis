@@ -34,7 +34,6 @@ async def pubsub():
 
     # closing all open connections
     await psub.close()
-    await redis.close()
 
 
 async def main():
