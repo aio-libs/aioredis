@@ -3,29 +3,21 @@ import pytest
 import aioredis
 from aioredis.connection import Connection
 
-from .conftest import _get_client
-
 pytestmark = pytest.mark.asyncio
 
 
 class TestEncoding:
     @pytest.fixture()
-    async def r(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis,
-            request=request,
-            event_loop=event_loop,
-            decode_responses=True,
-        )
+    async def r(self, create_redis, server):
+        redis = await create_redis(server.tcp_address, decode_responses=True)
+        yield redis
+        await redis.flushall()
 
     @pytest.fixture()
-    async def r_no_decode(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis,
-            request=request,
-            event_loop=event_loop,
-            decode_responses=False,
-        )
+    async def r_no_decode(self, create_redis, server):
+        redis = await create_redis(server.tcp_address, decode_responses=False)
+        yield redis
+        await redis.flushall()
 
     async def test_simple_encoding(self, r_no_decode: aioredis.Redis):
         unicode_string = chr(3456) + "abcd" + chr(3421)
@@ -66,22 +58,18 @@ class TestEncoding:
 
 
 class TestEncodingErrors:
-    async def test_ignore(self, request, event_loop):
-        r = await _get_client(
-            aioredis.Redis,
-            request=request,
-            event_loop=event_loop,
+    async def test_ignore(self, create_redis, server):
+        r = await create_redis(
+            server.tcp_address,
             decode_responses=True,
             encoding_errors="ignore",
         )
         await r.set("a", b"foo\xff")
         assert await r.get("a") == "foo"
 
-    async def test_replace(self, request, event_loop):
-        r = await _get_client(
-            aioredis.Redis,
-            request=request,
-            event_loop=event_loop,
+    async def test_replace(self, create_redis, server):
+        r = await create_redis(
+            server.tcp_address,
             decode_responses=True,
             encoding_errors="replace",
         )
@@ -90,10 +78,10 @@ class TestEncodingErrors:
 
 
 class TestMemoryviewsAreNotPacked:
-    def test_memoryviews_are_not_packed(self):
-        c = Connection()
+    async def test_memoryviews_are_not_packed(self, r):
         arg = memoryview(b"some_arg")
         arg_list = ["SOME_COMMAND", arg]
+        c = r.connection or await r.connection_pool.get_connection("_")
         cmd = c.pack_command(*arg_list)
         assert cmd[1] is arg
         cmds = c.pack_commands([arg_list, arg_list])
@@ -103,10 +91,10 @@ class TestMemoryviewsAreNotPacked:
 
 class TestCommandsAreNotEncoded:
     @pytest.fixture()
-    async def r(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis, request=request, event_loop=event_loop, encoding="utf-16"
-        )
+    async def r(self, create_redis, server):
+        redis = await create_redis(server.tcp_address, encoding="utf-16")
+        yield redis
+        await redis.flushall()
 
     async def test_basic_command(self, r: aioredis.Redis):
         await r.set("hello", "world")

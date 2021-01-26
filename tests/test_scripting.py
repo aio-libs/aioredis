@@ -20,6 +20,11 @@ return "hello " .. name
 
 
 class TestScripting:
+    @pytest.fixture
+    async def r(self, redis):
+        yield redis
+        await redis.script_flush()
+
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_eval(self, r):
         await r.flushdb()

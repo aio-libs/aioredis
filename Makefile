@@ -31,7 +31,7 @@ mypy:
 	$(MYPY) aioredis --ignore-missing-imports
 
 test:
-	$(PYTEST) --timeout=60
+	$(PYTEST)
 
 cov coverage:
 	$(PYTEST) --cov
@@ -84,8 +84,8 @@ certificate:
 
 ci-test: $(REDIS_TARGETS)
 	$(PYTEST) \
-		--timeout=60 --cov --cov-report=xml -vvvs\
-		$(foreach $(REDIS_TARGETS))
+		--cov --cov-report=xml -vvvs\
+		$(foreach $(REDIS_TARGETS),--redis-server=$T)
 
 ci-test-%: $(INSTALL_DIR)/%/redis-server
 	$(PYTEST) --cov

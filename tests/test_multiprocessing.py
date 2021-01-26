@@ -4,11 +4,8 @@ import multiprocessing
 
 import pytest
 
-import aioredis
 from aioredis.connection import Connection, ConnectionPool
 from aioredis.exceptions import ConnectionError
-
-from .conftest import _get_client
 
 pytestmark = pytest.mark.asyncio
 
@@ -29,13 +26,13 @@ class TestMultiprocessing:
     # use a multi-connection client as that's the only type that is
     # actually fork/process-safe
     @pytest.fixture()
-    async def r(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis,
-            event_loop=event_loop,
-            request=request,
+    async def r(self, create_redis, server):
+        redis = await create_redis(
+            server.tcp_address,
             single_connection_client=False,
         )
+        yield redis
+        await redis.flushall()
 
     async def test_close_connection_in_child(self, master_host):
         """

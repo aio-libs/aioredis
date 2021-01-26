@@ -2,21 +2,18 @@ import time
 
 import pytest
 
-from aioredis.client import Redis
 from aioredis.exceptions import LockError, LockNotOwnedError
 from aioredis.lock import Lock
-
-from .conftest import _get_client
 
 pytestmark = pytest.mark.asyncio
 
 
 class TestLock:
     @pytest.fixture()
-    async def r_decoded(self, request, event_loop):
-        return await _get_client(
-            Redis, request=request, event_loop=event_loop, decode_responses=True
-        )
+    async def r_decoded(self, create_redis, server):
+        redis = await create_redis(server.tcp_address, decode_responses=True)
+        yield redis
+        await redis.flushall()
 
     def get_lock(self, redis, *args, **kwargs):
         kwargs["lock_class"] = Lock

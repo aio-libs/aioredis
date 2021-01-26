@@ -8,7 +8,7 @@ import pytest
 import aioredis
 from aioredis.exceptions import ConnectionError
 
-from .conftest import _get_client, skip_if_server_version_lt
+from .testutils import redis_version
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
@@ -370,11 +370,9 @@ class TestPubSubAutoDecoding:
         self.message = message
 
     @pytest.fixture()
-    async def r(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis,
-            request=request,
-            event_loop=event_loop,
+    async def r(self, create_redis, server):
+        return await create_redis(
+            server.tcp_address,
             decode_responses=True,
         )
 
@@ -481,7 +479,13 @@ class TestPubSubRedisDown:
 
 
 class TestPubSubSubcommands:
-    @skip_if_server_version_lt("2.8.0")
+    @pytest.fixture
+    async def r(self, redis):
+        yield redis
+        await redis.execute_command("UNSUBSCRIBE")
+        await redis.execute_command("PUNSUBSCRIBE")
+
+    @redis_version(2, 8, 0)
     async def test_pubsub_channels(self, r):
         p = r.pubsub()
         await p.subscribe("foo", "bar", "baz", "quux")
@@ -490,7 +494,7 @@ class TestPubSubSubcommands:
         expected = [b"bar", b"baz", b"foo", b"quux"]
         assert all([channel in await r.pubsub_channels() for channel in expected])
 
-    @skip_if_server_version_lt("2.8.0")
+    @redis_version(2, 8, 0)
     async def test_pubsub_numsub(self, r):
         p1 = r.pubsub()
         await p1.subscribe("foo", "bar", "baz")
@@ -507,7 +511,7 @@ class TestPubSubSubcommands:
         channels = [(b"foo", 1), (b"bar", 2), (b"baz", 3)]
         assert channels == await r.pubsub_numsub("foo", "bar", "baz")
 
-    @skip_if_server_version_lt("2.8.0")
+    @redis_version(2, 8, 0)
     async def test_pubsub_numpat(self, r):
         p = r.pubsub()
         await p.psubscribe("*oo", "*ar", "b*z")
@@ -517,7 +521,7 @@ class TestPubSubSubcommands:
 
 
 class TestPubSubPings:
-    @skip_if_server_version_lt("3.0.0")
+    @redis_version(3, 0, 0)
     async def test_send_pubsub_ping(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         await p.subscribe("foo")
@@ -526,7 +530,7 @@ class TestPubSubPings:
             type="pong", channel=None, data="", pattern=None
         )
 
-    @skip_if_server_version_lt("3.0.0")
+    @redis_version(3, 0, 0)
     async def test_send_pubsub_ping_message(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         await p.subscribe("foo")
@@ -537,7 +541,7 @@ class TestPubSubPings:
 
 
 class TestPubSubConnectionKilled:
-    @skip_if_server_version_lt("3.0.0")
+    @redis_version(3, 0, 0)
     async def test_connection_error_raised_when_connection_dies(self, r):
         p = r.pubsub()
         await p.subscribe("foo")

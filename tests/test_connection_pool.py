@@ -9,8 +9,8 @@ import pytest
 import aioredis
 from aioredis.connection import Connection, to_bool
 
-from .conftest import REDIS_6_VERSION, _get_client, skip_if_server_version_lt
 from .test_pubsub import wait_for_message
+from .testutils import REDIS_6_VERSION, redis_version
 
 pytestmark = pytest.mark.asyncio
 
@@ -217,7 +217,7 @@ class TestConnectionPoolURLParsing:
             "port": 6380,
         }
 
-    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @redis_version(*REDIS_6_VERSION)
     def test_username(self):
         pool = aioredis.ConnectionPool.from_url("redis://myuser:@localhost")
         assert pool.connection_class == aioredis.Connection
@@ -226,7 +226,7 @@ class TestConnectionPoolURLParsing:
             "username": "myuser",
         }
 
-    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @redis_version(*REDIS_6_VERSION)
     def test_quoted_username(self):
         pool = aioredis.ConnectionPool.from_url(
             "redis://%2Fmyuser%2F%2B name%3D%24+:@localhost"
@@ -255,7 +255,7 @@ class TestConnectionPoolURLParsing:
             "password": "/mypass/+ word=$+",
         }
 
-    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @redis_version(*REDIS_6_VERSION)
     def test_username_and_password(self):
         pool = aioredis.ConnectionPool.from_url("redis://myuser:mypass@localhost")
         assert pool.connection_class == aioredis.Connection
@@ -370,7 +370,7 @@ class TestConnectionPoolUnixSocketURLParsing:
             "path": "/socket",
         }
 
-    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @redis_version(*REDIS_6_VERSION)
     def test_username(self):
         pool = aioredis.ConnectionPool.from_url("unix://myuser:@/socket")
         assert pool.connection_class == aioredis.UnixDomainSocketConnection
@@ -379,7 +379,7 @@ class TestConnectionPoolUnixSocketURLParsing:
             "username": "myuser",
         }
 
-    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @redis_version(*REDIS_6_VERSION)
     def test_quoted_username(self):
         pool = aioredis.ConnectionPool.from_url(
             "unix://%2Fmyuser%2F%2B name%3D%24+:@/socket"
@@ -493,7 +493,7 @@ class TestConnection:
         assert len(pool._available_connections) == 1
         assert not pool._available_connections[0]._reader
 
-    @skip_if_server_version_lt("2.8.8")
+    @redis_version(2, 8, 8)
     async def test_busy_loading_disconnects_socket(self, r):
         """
         If Redis raises a LOADING error, the connection should be
@@ -501,9 +501,10 @@ class TestConnection:
         """
         with pytest.raises(aioredis.BusyLoadingError):
             await r.execute_command("DEBUG", "ERROR", "LOADING fake message")
-        assert not r.connection._reader
+        if r.connection:
+            assert not r.connection._reader
 
-    @skip_if_server_version_lt("2.8.8")
+    @redis_version(2, 8, 8)
     async def test_busy_loading_from_pipeline_immediate_command(self, r):
         """
         BusyLoadingErrors should raise from Pipelines that execute a
@@ -519,7 +520,7 @@ class TestConnection:
         assert len(pool._available_connections) == 1
         assert not pool._available_connections[0]._reader
 
-    @skip_if_server_version_lt("2.8.8")
+    @redis_version(2, 8, 8)
     async def test_busy_loading_from_pipeline(self, r):
         """
         BusyLoadingErrors should be raised from a pipeline execution
@@ -534,7 +535,7 @@ class TestConnection:
         assert len(pool._available_connections) == 1
         assert not pool._available_connections[0]._reader
 
-    @skip_if_server_version_lt("2.8.8")
+    @redis_version(2, 8, 8)
     async def test_read_only_error(self, r):
         """READONLY errors get turned in ReadOnlyError exceptions"""
         with pytest.raises(aioredis.ReadOnlyError):
@@ -578,61 +579,62 @@ class TestConnection:
 
 class TestMultiConnectionClient:
     @pytest.fixture()
-    async def r(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis, request, event_loop, single_connection_client=False
-        )
-
-    async def test_multi_connection_command(self, r):
-        assert not r.connection
-        assert await r.set("a", "123")
-        assert (await r.get("a")) == b"123"
+    async def r(self, create_redis, server):
+        redis = await create_redis(server.tcp_address, single_connection_client=False)
+        yield redis
+        await redis.flushall()
 
 
 class TestHealthCheck:
     interval = 60
 
     @pytest.fixture()
-    async def r(self, request, event_loop):
-        return await _get_client(
-            aioredis.Redis, request, event_loop, health_check_interval=self.interval
+    async def r(self, server, create_redis):
+        redis = await create_redis(
+            server.tcp_address, health_check_interval=self.interval
         )
+        yield redis
+        await redis.flushall()
 
     def assert_interval_advanced(self, connection):
         diff = connection.next_health_check - time.time()
         assert self.interval > diff > (self.interval - 1)
 
     async def test_health_check_runs(self, r):
-        r.connection.next_health_check = time.time() - 1
-        await r.connection.check_health()
-        self.assert_interval_advanced(r.connection)
+        if r.connection:
+            r.connection.next_health_check = time.time() - 1
+            await r.connection.check_health()
+            self.assert_interval_advanced(r.connection)
 
     async def test_arbitrary_command_invokes_health_check(self, r):
         # invoke a command to make sure the connection is entirely setup
-        await r.get("foo")
-        r.connection.next_health_check = time.time()
-        with mock.patch.object(
-            r.connection, "send_command", wraps=r.connection.send_command
-        ) as m:
+        if r.connection:
             await r.get("foo")
-            m.assert_called_with("PING", check_health=False)
+            r.connection.next_health_check = time.time()
+            with mock.patch.object(
+                r.connection, "send_command", wraps=r.connection.send_command
+            ) as m:
+                await r.get("foo")
+                m.assert_called_with("PING", check_health=False)
 
-        self.assert_interval_advanced(r.connection)
+            self.assert_interval_advanced(r.connection)
 
     async def test_arbitrary_command_advances_next_health_check(self, r):
-        await r.get("foo")
-        next_health_check = r.connection.next_health_check
-        await r.get("foo")
-        assert next_health_check < r.connection.next_health_check
+        if r.connection:
+            await r.get("foo")
+            next_health_check = r.connection.next_health_check
+            await r.get("foo")
+            assert next_health_check < r.connection.next_health_check
 
     async def test_health_check_not_invoked_within_interval(self, r):
-        await r.get("foo")
-        with mock.patch.object(
-            r.connection, "send_command", wraps=r.connection.send_command
-        ) as m:
+        if r.connection:
             await r.get("foo")
-            ping_call_spec = (("PING",), {"check_health": False})
-            assert ping_call_spec not in m.call_args_list
+            with mock.patch.object(
+                r.connection, "send_command", wraps=r.connection.send_command
+            ) as m:
+                await r.get("foo")
+                ping_call_spec = (("PING",), {"check_health": False})
+                assert ping_call_spec not in m.call_args_list
 
     async def test_health_check_in_pipeline(self, r):
         async with r.pipeline(transaction=False) as pipe:
