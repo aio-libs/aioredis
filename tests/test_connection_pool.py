@@ -9,8 +9,8 @@ import pytest
 import aioredis
 from aioredis.connection import Connection, to_bool
 
+from .conftest import REDIS_6_VERSION, skip_if_server_version_lt
 from .test_pubsub import wait_for_message
-from .testutils import REDIS_6_VERSION, redis_version
 
 pytestmark = pytest.mark.asyncio
 
@@ -217,7 +217,7 @@ class TestConnectionPoolURLParsing:
             "port": 6380,
         }
 
-    @redis_version(*REDIS_6_VERSION)
+    @skip_if_server_version_lt(REDIS_6_VERSION)
     def test_username(self):
         pool = aioredis.ConnectionPool.from_url("redis://myuser:@localhost")
         assert pool.connection_class == aioredis.Connection
@@ -226,7 +226,7 @@ class TestConnectionPoolURLParsing:
             "username": "myuser",
         }
 
-    @redis_version(*REDIS_6_VERSION)
+    @skip_if_server_version_lt(REDIS_6_VERSION)
     def test_quoted_username(self):
         pool = aioredis.ConnectionPool.from_url(
             "redis://%2Fmyuser%2F%2B name%3D%24+:@localhost"
@@ -255,7 +255,7 @@ class TestConnectionPoolURLParsing:
             "password": "/mypass/+ word=$+",
         }
 
-    @redis_version(*REDIS_6_VERSION)
+    @skip_if_server_version_lt(REDIS_6_VERSION)
     def test_username_and_password(self):
         pool = aioredis.ConnectionPool.from_url("redis://myuser:mypass@localhost")
         assert pool.connection_class == aioredis.Connection
@@ -370,7 +370,7 @@ class TestConnectionPoolUnixSocketURLParsing:
             "path": "/socket",
         }
 
-    @redis_version(*REDIS_6_VERSION)
+    @skip_if_server_version_lt(REDIS_6_VERSION)
     def test_username(self):
         pool = aioredis.ConnectionPool.from_url("unix://myuser:@/socket")
         assert pool.connection_class == aioredis.UnixDomainSocketConnection
@@ -379,7 +379,7 @@ class TestConnectionPoolUnixSocketURLParsing:
             "username": "myuser",
         }
 
-    @redis_version(*REDIS_6_VERSION)
+    @skip_if_server_version_lt(REDIS_6_VERSION)
     def test_quoted_username(self):
         pool = aioredis.ConnectionPool.from_url(
             "unix://%2Fmyuser%2F%2B name%3D%24+:@/socket"
@@ -493,7 +493,7 @@ class TestConnection:
         assert len(pool._available_connections) == 1
         assert not pool._available_connections[0]._reader
 
-    @redis_version(2, 8, 8)
+    @skip_if_server_version_lt("2.8.8")
     async def test_busy_loading_disconnects_socket(self, r):
         """
         If Redis raises a LOADING error, the connection should be
@@ -504,7 +504,7 @@ class TestConnection:
         if r.connection:
             assert not r.connection._reader
 
-    @redis_version(2, 8, 8)
+    @skip_if_server_version_lt("2.8.8")
     async def test_busy_loading_from_pipeline_immediate_command(self, r):
         """
         BusyLoadingErrors should raise from Pipelines that execute a
@@ -520,7 +520,7 @@ class TestConnection:
         assert len(pool._available_connections) == 1
         assert not pool._available_connections[0]._reader
 
-    @redis_version(2, 8, 8)
+    @skip_if_server_version_lt("2.8.8")
     async def test_busy_loading_from_pipeline(self, r):
         """
         BusyLoadingErrors should be raised from a pipeline execution
@@ -535,7 +535,7 @@ class TestConnection:
         assert len(pool._available_connections) == 1
         assert not pool._available_connections[0]._reader
 
-    @redis_version(2, 8, 8)
+    @skip_if_server_version_lt("2.8.8")
     async def test_read_only_error(self, r):
         """READONLY errors get turned in ReadOnlyError exceptions"""
         with pytest.raises(aioredis.ReadOnlyError):
@@ -580,7 +580,7 @@ class TestConnection:
 class TestMultiConnectionClient:
     @pytest.fixture()
     async def r(self, create_redis, server):
-        redis = await create_redis(server.tcp_address, single_connection_client=False)
+        redis = await create_redis(single_connection_client=False)
         yield redis
         await redis.flushall()
 
@@ -589,10 +589,8 @@ class TestHealthCheck:
     interval = 60
 
     @pytest.fixture()
-    async def r(self, server, create_redis):
-        redis = await create_redis(
-            server.tcp_address, health_check_interval=self.interval
-        )
+    async def r(self, create_redis):
+        redis = await create_redis(health_check_interval=self.interval)
         yield redis
         await redis.flushall()
 

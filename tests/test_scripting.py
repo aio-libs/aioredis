@@ -21,7 +21,8 @@ return "hello " .. name
 
 class TestScripting:
     @pytest.fixture
-    async def r(self, redis):
+    async def r(self, create_redis):
+        redis = await create_redis()
         yield redis
         await redis.script_flush()
 

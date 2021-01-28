@@ -10,8 +10,8 @@ pytestmark = pytest.mark.asyncio
 
 class TestLock:
     @pytest.fixture()
-    async def r_decoded(self, create_redis, server):
-        redis = await create_redis(server.tcp_address, decode_responses=True)
+    async def r_decoded(self, create_redis):
+        redis = await create_redis(decode_responses=True)
         yield redis
         await redis.flushall()
 

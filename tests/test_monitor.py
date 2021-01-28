@@ -17,7 +17,7 @@ class TestMonitor:
             await r.ping()
             response = await wait_for_command(r, m, "PING")
             assert isinstance(response["time"], float)
-            assert response["db"] == 0
+            assert response["db"] == 9
             assert response["client_type"] in ("tcp", "unix")
             assert isinstance(response["client_address"], str)
             assert isinstance(response["client_port"], str)

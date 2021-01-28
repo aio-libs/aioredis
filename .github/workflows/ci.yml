@@ -57,11 +57,56 @@ jobs:
         os: [ubuntu-latest]
         pyver: [3.6, 3.7, 3.8, 3.9, pypy3]
         uvloop: [uvloop, no-uvloop]
+        redis: [5.0.10, 6.0.10]
         exclude:
-        - pyver: pypy3
-          uvloop: uvloop
-          os: ubuntu-latest
+        - { pyver: pypy3, uvloop: uvloop, os: ubuntu-latest, redis: 5.0.10 }
+        - { pyver: pypy3, uvloop: uvloop, os: ubuntu-latest, redis: 6.0.10 }
       fail-fast: false
+    services:
+      redis-main:
+        image: bitnami/redis:${{ matrix.redis }}
+        env:
+          REDIS_REPLICATION_MODE: master
+        ports:
+        # Maps port 6379 on service container to the host
+        - 6379:6379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis-replica-1:
+        image: bitnami/redis:${{ matrix.redis }}
+        env:
+          REDIS_REPLICATION_MODE: slave
+          REDIS_MASTER_HOST: localhost
+          REDIS_MASTER_PORT_NUMBER: 6379
+        ports:
+        # Maps port 6379 on service container to the host
+        - 6379:16379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis-replica-2:
+        image: bitnami/redis:${{ matrix.redis }}
+        env:
+          REDIS_REPLICATION_MODE: slave
+          REDIS_MASTER_HOST: localhost
+          REDIS_MASTER_PORT_NUMBER: 6379
+        ports:
+        # Maps port 6379 on service container to the host
+        - 6379:26379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
@@ -75,30 +120,17 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.pyver }}
-    - name: Cache Redis Server (${{ runner.os }})
-      uses: actions/cache@v2
-      with:
-        key: pip-ci-${{ runner.os }}-${{ hashFiles('**/requirements.txt', 'Makefile') }}
-        path: ${{ github.workspace }}/redis
-        restore-keys: |
-            pip-ci-${{ runner.os }}-
-    - name: Install Redis Server (${{ runner.os }})
-      if: startsWith(runner.os, 'Linux')
-      run: |
-        sudo apt install socat
-        make ci-prune-old-redis
-        make -j ci-build-redis
     - name: Get pip cache dir
       id: pip-cache
       run: |
-        echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+        echo "::set-output name=dir::$(pip cache dir)"
     - name: Cache PyPI
       uses: actions/cache@v2
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ hashFiles('**/requirements.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-
+            pip-ci-${{ runner.os }}-${{ matrix.pyver }}
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v2
       with:
@@ -111,7 +143,7 @@ jobs:
         pip install -e . -c tests/requirements.txt
     - name: Run unittests (${{ matrix.uvloop }}, ${{ matrix.os }})
       run: |
-        make ci-test
+        make ci-test-${{ matrix.redis }}
         python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v1
@@ -133,6 +165,50 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     timeout-minutes: 15
+    services:
+      redis-main:
+        image: bitnami/redis:${{ matrix.redis }}
+        env:
+          REDIS_REPLICATION_MODE: master
+        ports:
+        # Maps port 6379 on service container to the host
+        - 6379:6379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis-replica-1:
+        image: bitnami/redis:${{ matrix.redis }}
+        env:
+          REDIS_REPLICATION_MODE: slave
+          REDIS_MASTER_HOST: localhost
+          REDIS_MASTER_PORT_NUMBER: 6379
+        ports:
+        # Maps port 6379 on service container to the host
+        - 6379:16379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis-replica-2:
+        image: bitnami/redis:${{ matrix.redis }}
+        env:
+          REDIS_REPLICATION_MODE: slave
+          REDIS_MASTER_HOST: localhost
+          REDIS_MASTER_PORT_NUMBER: 6379
+        ports:
+        # Maps port 6379 on service container to the host
+        - 6379:26379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       OS: ${{ matrix.os }}
       INSTALL_DIR: ${{ github.workspace }}/redis
@@ -144,17 +220,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.pyver }}
-    - name: Cache Redis server
-      uses: actions/cache@v2
-      if: ${{ startsWith(runner.os, 'Windows') }}
-      with:
-        key: pip-ci-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
-        path: ${{ github.workspace }}\redis
-        restore-keys: |
-          pip-ci-${{ runner.os }}-
-    - name: Install Redis Server
-      run: |
-        choco install redis-64 --version 3.0.503
     - name: Get pip cache dir
       id: pip-cache
       run: |
@@ -177,7 +242,7 @@ jobs:
     - name: Run unittests
       if: ${{ startsWith(runner.os, 'Windows') }}
       run: |
-        python -m pytest -svv --cov --cov-report=xml --junitxml=coverage.xml --redis-server=C:\\ProgramData\\chocolatey\\lib\\redis-64\\redis-server.exe
+        python -m pytest -sv --cov --cov-report=xml --junitxml=coverage.xml
     - name: Upload coverage
       uses: codecov/codecov-action@v1
       with:

@@ -8,14 +8,14 @@ pytestmark = pytest.mark.asyncio
 
 class TestEncoding:
     @pytest.fixture()
-    async def r(self, create_redis, server):
-        redis = await create_redis(server.tcp_address, decode_responses=True)
+    async def r(self, create_redis):
+        redis = await create_redis(decode_responses=True)
         yield redis
         await redis.flushall()
 
     @pytest.fixture()
-    async def r_no_decode(self, create_redis, server):
-        redis = await create_redis(server.tcp_address, decode_responses=False)
+    async def r_no_decode(self, create_redis):
+        redis = await create_redis(decode_responses=False)
         yield redis
         await redis.flushall()
 
@@ -58,18 +58,16 @@ class TestEncoding:
 
 
 class TestEncodingErrors:
-    async def test_ignore(self, create_redis, server):
+    async def test_ignore(self, create_redis):
         r = await create_redis(
-            server.tcp_address,
             decode_responses=True,
             encoding_errors="ignore",
         )
         await r.set("a", b"foo\xff")
         assert await r.get("a") == "foo"
 
-    async def test_replace(self, create_redis, server):
+    async def test_replace(self, create_redis):
         r = await create_redis(
-            server.tcp_address,
             decode_responses=True,
             encoding_errors="replace",
         )
@@ -91,8 +89,8 @@ class TestMemoryviewsAreNotPacked:
 
 class TestCommandsAreNotEncoded:
     @pytest.fixture()
-    async def r(self, create_redis, server):
-        redis = await create_redis(server.tcp_address, encoding="utf-16")
+    async def r(self, create_redis):
+        redis = await create_redis(encoding="utf-16")
         yield redis
         await redis.flushall()
 
