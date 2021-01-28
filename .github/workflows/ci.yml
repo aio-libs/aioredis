@@ -74,48 +74,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-#      redis-B:
-#        image: redis:${{ matrix.redis }}
-#        ports:
-#        # Maps port 6379 on service container to the host
-#        - 6379:26379
-#        # Set health checks to wait until redis has started
-#        options: >-
-#          --health-cmd "redis-cli ping"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
-#      redis-replica-1:
-#        image: bitnami/redis:${{ matrix.redis }}
-#        env:
-#          REDIS_REPLICATION_MODE: slave
-#          REDIS_MASTER_HOST: localhost
-#          REDIS_MASTER_PORT_NUMBER: 6379
-#        ports:
-#        # Maps port 6379 on service container to the host
-#        - 6379:16379
-#        # Set health checks to wait until redis has started
-#        options: >-
-#          --health-cmd "redis-cli ping"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
-#      redis-replica-2:
-#        image: bitnami/redis:${{ matrix.redis }}
-#        env:
-#          REDIS_REPLICATION_MODE: slave
-#          REDIS_MASTER_HOST: localhost
-#          REDIS_MASTER_PORT_NUMBER: 6379
-#        ports:
-#        # Maps port 6379 on service container to the host
-#        - 6379:26379
-#        # Set health checks to wait until redis has started
-#        options: >-
-#          --health-cmd "redis-cli ping"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
-
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
@@ -167,19 +125,17 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        os: [windows-latest]
         pyver: [3.6, 3.7, 3.8, 3.9, pypy3]
         uvloop: [no-uvloop]
         redis: [5.0.10, 6.0.10]
       fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    container: windows:20H2-amd64
     continue-on-error: true
     timeout-minutes: 15
     services:
-      redis-main:
+      redis:
         image: redis:${{ matrix.redis }}
-        env:
-          REDIS_REPLICATION_MODE: master
         ports:
         # Maps port 6379 on service container to the host
         - 6379:6379
@@ -189,36 +145,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-#      redis-replica-1:
-#        image: bitnami/redis:${{ matrix.redis }}
-#        env:
-#          REDIS_REPLICATION_MODE: slave
-#          REDIS_MASTER_HOST: localhost
-#          REDIS_MASTER_PORT_NUMBER: 6379
-#        ports:
-#        # Maps port 6379 on service container to the host
-#        - 6379:16379
-#        # Set health checks to wait until redis has started
-#        options: >-
-#          --health-cmd "redis-cli ping"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
-#      redis-replica-2:
-#        image: bitnami/redis:${{ matrix.redis }}
-#        env:
-#          REDIS_REPLICATION_MODE: slave
-#          REDIS_MASTER_HOST: localhost
-#          REDIS_MASTER_PORT_NUMBER: 6379
-#        ports:
-#        # Maps port 6379 on service container to the host
-#        - 6379:26379
-#        # Set health checks to wait until redis has started
-#        options: >-
-#          --health-cmd "redis-cli ping"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
     env:
       OS: ${{ matrix.os }}
       INSTALL_DIR: ${{ github.workspace }}/redis
@@ -252,7 +178,7 @@ jobs:
     - name: Run unittests
       if: ${{ startsWith(runner.os, 'Windows') }}
       run: |
-        python -m pytest -sv --cov --cov-report=xml --junitxml=coverage.xml
+        python -m pytest -sv --cov --cov-report=xml --junitxml=coverage.xml --redis-url=redis://redis:6379
     - name: Upload coverage
       uses: codecov/codecov-action@v1
       with:
