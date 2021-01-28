@@ -125,26 +125,13 @@ jobs:
     needs: lint
     strategy:
       matrix:
+        os: [windows-latest]
         pyver: [3.6, 3.7, 3.8, 3.9, pypy3]
         uvloop: [no-uvloop]
-        redis: [5.0.10, 6.0.10]
       fail-fast: false
-    runs-on: ubuntu-latest
-    container: mcr.microsoft.com/windows:20H2
+    runs-on: ${{ matrix.os }}
     continue-on-error: true
     timeout-minutes: 15
-    services:
-      redis:
-        image: redis:${{ matrix.redis }}
-        ports:
-        # Maps port 6379 on service container to the host
-        - 6379:6379
-        # Set health checks to wait until redis has started
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
       OS: ${{ matrix.os }}
       INSTALL_DIR: ${{ github.workspace }}/redis
@@ -156,6 +143,21 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.pyver }}
+    - name: Cache Redis server
+      uses: actions/cache@v2
+      if: ${{ startsWith(runner.os, 'Windows') }}
+      with:
+        key: pip-ci-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+        path: ${{ github.workspace }}\redis
+        restore-keys: |
+          pip-ci-${{ runner.os }}-
+    - name: Install Redis Server
+      run: |
+        choco install redis-64 --version 3.0.503
+    - name: Start Redis Server
+      run: |
+        redis-server --server-install
+        redis-server --server-start
     - name: Get pip cache dir
       id: pip-cache
       run: |
@@ -178,7 +180,7 @@ jobs:
     - name: Run unittests
       if: ${{ startsWith(runner.os, 'Windows') }}
       run: |
-        python -m pytest -sv --cov --cov-report=xml --junitxml=coverage.xml --redis-url=redis://redis:6379
+        python -m pytest -sv --cov --cov-report=xml --junitxml=coverage.xml --redis-url=redis://localhost:6379
     - name: Upload coverage
       uses: codecov/codecov-action@v1
       with:
