@@ -156,8 +156,8 @@ jobs:
         choco install redis-64 --version 3.0.503
     - name: Start Redis Server
       run: |
-        redis-server --server-install
-        redis-server --server-start
+        redis-server --daemonize yes
+        redis-cli ping
     - name: Get pip cache dir
       id: pip-cache
       run: |
