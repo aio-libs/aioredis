@@ -130,7 +130,7 @@ jobs:
         redis: [5.0.10, 6.0.10]
       fail-fast: false
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/windows:20H2-amd64
+    container: mcr.microsoft.com/windows:20H2
     continue-on-error: true
     timeout-minutes: 15
     services:
