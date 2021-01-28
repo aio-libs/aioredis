@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -16,7 +14,7 @@ if TYPE_CHECKING:
 @pytest.mark.asyncio
 async def test_invalid_response(r):
     raw = b"x"
-    parser: PythonParser = r.connection._parser
+    parser: "PythonParser" = r.connection._parser
     with mock.patch.object(parser._buffer, "readline", return_value=raw):
         with pytest.raises(InvalidResponse) as cm:
             await parser.read_response()

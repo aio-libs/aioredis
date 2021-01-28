@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import errno
 import inspect
@@ -18,11 +16,9 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Protocol,
     Set,
     Tuple,
     Type,
-    TypedDict,
     TypeVar,
     Union,
 )
@@ -30,6 +26,7 @@ from urllib.parse import ParseResult, parse_qs, unquote, urlparse
 
 import async_timeout
 
+from .compat import Protocol, TypedDict
 from .exceptions import (
     AuthenticationError,
     AuthenticationWrongNumberOfArgsError,
@@ -197,7 +194,7 @@ class BaseParser:
     def on_disconnect(self):
         raise NotImplementedError()
 
-    def on_connect(self, connection: Connection):
+    def on_connect(self, connection: "Connection"):
         raise NotImplementedError()
 
     async def can_read(self, timeout: float) -> bool:
@@ -345,7 +342,7 @@ class PythonParser(BaseParser):
         super().__init__(socket_read_size)
         self.encoder: Optional[Encoder] = None
 
-    def on_connect(self, connection: Connection):
+    def on_connect(self, connection: "Connection"):
         """Called when the stream connects"""
         self._stream = connection._reader
         self._buffer = SocketBuffer(
@@ -426,7 +423,7 @@ class HiredisParser(BaseParser):
         self._reader: Optional[hiredis.Reader] = None
         self._socket_timeout: Optional[float] = None
 
-    def on_connect(self, connection: Connection):
+    def on_connect(self, connection: "Connection"):
         self._stream = connection._reader
         kwargs = {
             "protocolError": InvalidResponse,
@@ -524,12 +521,12 @@ else:
 
 
 class ConnectCallbackProtocol(Protocol):
-    def __call__(self, connection: Connection):
+    def __call__(self, connection: "Connection"):
         ...
 
 
 class AsyncConnectCallbackProtocol(Protocol):
-    async def __call__(self, connection: Connection):
+    async def __call__(self, connection: "Connection"):
         ...
 
 

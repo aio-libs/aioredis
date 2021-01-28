@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import datetime
 import hashlib
@@ -23,7 +21,6 @@ from typing import (
     Mapping,
     NoReturn,
     Optional,
-    Protocol,
     Sequence,
     Tuple,
     Type,
@@ -32,6 +29,7 @@ from typing import (
     Union,
 )
 
+from aioredis.compat import Protocol
 from aioredis.connection import (
     Connection,
     ConnectionPool,
@@ -887,7 +885,7 @@ class Redis:
         """Set a custom Response Callback"""
         self.response_callbacks[command] = callback
 
-    def pipeline(self, transaction: bool = True, shard_hint: str = None) -> Pipeline:
+    def pipeline(self, transaction: bool = True, shard_hint: str = None) -> "Pipeline":
         """
         Return a new pipeline object that can queue multiple commands for
         later execution. ``transaction`` indicates whether all commands
@@ -901,7 +899,7 @@ class Redis:
 
     async def transaction(
         self,
-        func: Callable[[Pipeline], Union[Any, Awaitable[Any]]],
+        func: Callable[["Pipeline"], Union[Any, Awaitable[Any]]],
         *watches: str,
         shard_hint: str = None,
         value_from_callable: bool = False,
@@ -991,7 +989,7 @@ class Redis:
             thread_local=thread_local,
         )
 
-    def pubsub(self, **kwargs) -> PubSub:
+    def pubsub(self, **kwargs) -> "PubSub":
         """
         Return a Publish/Subscribe object. With this object, you can
         subscribe to channels and listen for messages that get published to
@@ -999,10 +997,10 @@ class Redis:
         """
         return PubSub(self.connection_pool, **kwargs)
 
-    def monitor(self) -> Monitor:
+    def monitor(self) -> "Monitor":
         return Monitor(self.connection_pool)
 
-    def client(self) -> Redis:
+    def client(self) -> "Redis":
         return self.__class__(
             connection_pool=self.connection_pool, single_connection_client=True
         )
@@ -1699,7 +1697,7 @@ class Redis:
             raise DataError("Both start and end must be specified")
         return self.execute_command("BITCOUNT", *params)
 
-    def bitfield(self, key: str, default_overflow: str = None) -> BitFieldOperation:
+    def bitfield(self, key: str, default_overflow: str = None) -> "BitFieldOperation":
         """
         Return a BitFieldOperation instance to conveniently construct one or
         more bitfield operations on ``key``.
@@ -3516,7 +3514,7 @@ class Redis:
         """Load a Lua ``script`` into the script cache. Returns the SHA."""
         return self.execute_command("SCRIPT LOAD", script)
 
-    def register_script(self, script: str) -> Script:
+    def register_script(self, script: str) -> "Script":
         """
         Register a Lua ``script`` specifying the ``keys`` it will touch.
         Returns a Script object that is callable and hides the complexity of
@@ -4137,7 +4135,7 @@ class PubSub:
 
     def run_in_thread(
         self, daemon: bool = False, exception_handler: Callable = None
-    ) -> PubSubWorkerThread:
+    ) -> "PubSubWorkerThread":
         for channel, handler in self.channels.items():
             if handler is None:
                 raise PubSubError("Channel: '%s' has no handler registered" % channel)
@@ -4153,12 +4151,12 @@ class PubSub:
 
 
 class PubsubWorkerExceptionHandler(Protocol):
-    def __call__(self, e: BaseException, pubsub: PubSub, t: PubSubWorkerThread):
+    def __call__(self, e: BaseException, pubsub: PubSub, t: "PubSubWorkerThread"):
         ...
 
 
 class AsyncPubsubWorkerExceptionHandler(Protocol):
-    async def __call__(self, e: BaseException, pubsub: PubSub, t: PubSubWorkerThread):
+    async def __call__(self, e: BaseException, pubsub: PubSub, t: "PubSubWorkerThread"):
         ...
 
 
@@ -4257,7 +4255,7 @@ class Pipeline(Redis):
         self.scripts = set()
         self.explicit_transaction = False
 
-    async def __aenter__(self) -> Pipeline:
+    async def __aenter__(self) -> "Pipeline":
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
@@ -4316,7 +4314,9 @@ class Pipeline(Redis):
             )
         self.explicit_transaction = True
 
-    def execute_command(self, *args, **kwargs) -> Union[Pipeline, Awaitable[Pipeline]]:
+    def execute_command(
+        self, *args, **kwargs
+    ) -> Union["Pipeline", Awaitable["Pipeline"]]:
         if (self.watching or args[0] == "WATCH") and not self.explicit_transaction:
             return self.immediate_execute_command(*args, **kwargs)
         return self.pipeline_execute_command(*args, **kwargs)

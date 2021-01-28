@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -29,7 +27,7 @@ def from_url(url, **kwargs):
 
 
 @asynccontextmanager
-async def pipeline(redis_obj: Redis) -> Pipeline:
+async def pipeline(redis_obj: "Redis") -> "Pipeline":
     p = redis_obj.pipeline()
     yield p
     await p.execute()

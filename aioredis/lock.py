@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import threading
 import time as mod_time
 import uuid
@@ -79,7 +77,7 @@ class Lock:
 
     def __init__(
         self,
-        redis: Redis,
+        redis: "Redis",
         name: str,
         timeout: float = None,
         sleep: float = 0.1,
