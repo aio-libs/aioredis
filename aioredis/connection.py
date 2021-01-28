@@ -762,7 +762,9 @@ class Connection:
                 try:
                     if os.getpid() == self.pid:
                         self._writer.close()
-                        await self._writer.wait_closed()
+                        # py3.6 doesn't have this method
+                        if hasattr(self._writer, "wait_closed"):
+                            await self._writer.wait_closed()
                 except OSError:
                     pass
                 self._reader = None
