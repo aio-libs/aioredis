@@ -150,7 +150,7 @@ jobs:
         key: pip-ci-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
         path: ${{ github.workspace }}\redis
         restore-keys: |
-          pip-ci-${{ runner.os }}-
+          redis-ci-${{ runner.os }}
     - name: Install Redis Server
       run: |
         choco install redis-64 --version 3.0.503
@@ -168,7 +168,7 @@ jobs:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ hashFiles('**/requirements.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-
+            pip-ci-${{ runner.os }}-${{ matrix.pyver }}
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v2
       with:
