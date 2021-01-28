@@ -10,9 +10,6 @@ asyncio (PEP 3156) Redis client library.
 .. image:: https://codecov.io/gh/aio-libs/aioredis/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aioredis
 
-.. image:: https://ci.appveyor.com/api/projects/status/wngyx6s98o6hsxmt/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/popravich/aioredis
-
 Features
 --------
 
