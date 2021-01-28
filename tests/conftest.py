@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import random
 from distutils.version import StrictVersion
-from unittest.mock import AsyncMock
 from urllib.parse import urlparse
 
 import pytest
@@ -10,6 +9,8 @@ import pytest
 import aioredis
 from aioredis.client import Monitor
 from aioredis.connection import parse_url
+
+from .compat import mock
 
 # redis 6 release candidates report a version number of 5.9.x. Use this
 # constant for skip_if decorators as a placeholder until 6.0.0 is officially
@@ -175,7 +176,7 @@ async def r2(create_redis):
 
 
 def _gen_cluster_mock_resp(r, response):
-    connection = AsyncMock()
+    connection = mock.AsyncMock()
     connection.read_response.return_value = response
     r.connection = connection
     return r

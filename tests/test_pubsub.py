@@ -1,13 +1,13 @@
 import asyncio
 import threading
 import time
-from unittest import mock
 
 import pytest
 
 import aioredis
 from aioredis.exceptions import ConnectionError
 
+from .compat import mock
 from .conftest import skip_if_server_version_lt
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)

@@ -1,7 +1,6 @@
 import pytest
 
 import aioredis
-from aioredis.connection import Connection
 
 pytestmark = pytest.mark.asyncio
 

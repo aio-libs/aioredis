@@ -2,13 +2,13 @@ import asyncio
 import os
 import re
 import time
-from unittest import mock
 
 import pytest
 
 import aioredis
 from aioredis.connection import Connection, to_bool
 
+from .compat import mock
 from .conftest import REDIS_6_VERSION, skip_if_server_version_lt
 from .test_pubsub import wait_for_message
 
