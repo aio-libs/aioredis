@@ -1025,7 +1025,7 @@ class RedisSSLContext:
         return self.context
 
 
-class UnixDomainSocketConnection(Connection):
+class UnixDomainSocketConnection(Connection):  # lgtm [py/missing-call-to-init]
     def __init__(
         self,
         *,
@@ -1262,7 +1262,7 @@ class ConnectionPool:
         self._created_connections: int
         self._available_connections: List[Connection]
         self._in_use_connections: Set[Connection]
-        self.reset()
+        self.reset()  # lgtm [py/init-calls-subclass]
         self.loop = self.connection_kwargs.get("loop")
         self.encoder_class = self.connection_kwargs.get("encoder_class", Encoder)
 

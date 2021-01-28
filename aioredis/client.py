@@ -4216,7 +4216,7 @@ CommandT = Tuple[Tuple[Union[str, bytes], ...], Mapping[str, Any]]
 CommandStackT = List[CommandT]
 
 
-class Pipeline(Redis):
+class Pipeline(Redis):  # lgtm [py/init-calls-subclass]
     """
     Pipelines provide a way to transmit multiple commands to the Redis server
     in one transmission.  This is convenient for batch processing, such as
@@ -4267,6 +4267,7 @@ class Pipeline(Redis):
                 loop.create_task(self.reset())
             else:
                 loop.run_until_complete(self.reset())
+            super().close()
         except Exception:
             pass
 
