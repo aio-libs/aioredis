@@ -24,12 +24,11 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    TypedDict,
     TypeVar,
     Union,
 )
 
-from aioredis.compat import Protocol
+from aioredis.compat import Protocol, TypedDict
 from aioredis.connection import (
     Connection,
     ConnectionPool,
