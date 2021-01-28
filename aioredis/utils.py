@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,11 +25,16 @@ def from_url(url, **kwargs):
     return Redis.from_url(url, **kwargs)
 
 
-@asynccontextmanager
-async def pipeline(redis_obj: "Redis") -> "Pipeline":
-    p = redis_obj.pipeline()
-    yield p
-    await p.execute()
+class pipeline:
+    def __init__(self, redis_obj: "Redis"):
+        self.p: "Pipeline" = redis_obj.pipeline()
+
+    async def __aenter__(self) -> "Pipeline":
+        return self.p
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.p.execute()
+        del self.p
 
 
 def str_if_bytes(value):
